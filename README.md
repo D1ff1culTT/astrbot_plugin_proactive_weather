@@ -1,4 +1,4 @@
-# astrbot_plugin_weather
+# astrbot_plugin_proactive_weather
 
 定时天气推送插件，基于和风天气 API v7，可定时推送天气、仅推送特殊天气，支持 Agent 工具调用、会话上下文感知、LivingMemory 记忆集成和 DeepSeek V4 前缀缓存优化。
 
@@ -87,7 +87,7 @@ normal          雨               推送（新预警出现）
 cd data/plugins
 
 # 克隆仓库
-git clone https://github.com/D1ff1culTT/astrbot_plugin_weather.git
+git clone https://github.com/D1ff1culTT/astrbot_plugin_proactive_weather.git
 
 # 重启 AstrBot
 ```
@@ -187,7 +187,7 @@ git clone https://github.com/D1ff1culTT/astrbot_plugin_weather.git
 ### 文件结构
 
 ```
-astrbot_plugin_weather/
+astrbot_plugin_proactive_weather/
 ├── main.py                # 插件主体（Star 类 + 6 个 Agent 工具 + 天气 API 封装）
 ├── _conf_schema.json      # AstrBot 面板配置 Schema（10 项，含类型、默认值、提示文案）
 ├── metadata.yaml           # 插件元数据（名称、版本、作者、仓库地址）

@@ -236,7 +236,7 @@ class AlertOnlyTool(FunctionTool[AstrAgentContext]):
 
 # ═══════════════════════ 插件主体 ═══════════════════════
 
-@register("weather_plugin", "YourName", "定时天气查询与推送插件", "1.0.0")
+@register("proactive_weather", "D1ff1culTT", "定时天气查询与推送插件", "1.0.0")
 class WeatherPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
