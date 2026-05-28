@@ -1,0 +1,63 @@
+{
+  "qweather_api_host": {
+    "description": "和风天气 API 域名",
+    "type": "string",
+    "default": "",
+    "hint": "在 https://console.qweather.com/ 的「设置」中查看你的专属 API Host（如 abc123.def.qweatherapi.com）。2025 年起和风天气已不再使用共享域名，必须填写此项。"
+  },
+  "qweather_key": {
+    "description": "和风天气 API Key",
+    "type": "string",
+    "default": "",
+    "hint": "在 https://console.qweather.com/ 注册并创建项目后获取。免费版每日 1000 次调用。",
+    "is_sensitive": true
+  },
+  "request_timeout": {
+    "description": "API 请求超时（秒）",
+    "type": "int",
+    "default": 10,
+    "hint": "获取天气数据的 HTTP 请求超时时间，建议 5-15 秒。"
+  },
+  "dnd_enabled": {
+    "description": "启用免打扰时段",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后在免打扰时段内不会推送天气消息。"
+  },
+  "dnd_start": {
+    "description": "免打扰开始时间",
+    "type": "string",
+    "default": "22:00",
+    "hint": "格式 HH:MM（24小时制），例如 22:00。"
+  },
+  "dnd_end": {
+    "description": "免打扰结束时间",
+    "type": "string",
+    "default": "07:00",
+    "hint": "格式 HH:MM（24小时制），例如 07:00。若结束 < 开始，表示跨天。"
+  },
+  "alert_only": {
+    "description": "仅特殊天气推送",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后仅在雨、雪、暴风、雷、冰雹、雾霾、沙尘、台风、高温>35°C、低温<0°C 等特殊天气时推送。Agent 可为单个会话覆盖此设置。"
+  },
+  "alert_first_of_day": {
+    "description": "每天首次始终推送",
+    "type": "bool",
+    "default": true,
+    "hint": "仅「仅特殊天气推送」开启时生效。开启后每天第一次推送无视天气条件始终触发。Agent 可为单个会话覆盖此设置。"
+  },
+  "memory_limit": {
+    "description": "LivingMemory 记忆获取条数",
+    "type": "int",
+    "default": 10,
+    "hint": "每次天气推送时从 LivingMemory 插件获取的会话记忆数量，用于让 LLM 结合上下文播报。"
+  },
+  "max_tool_retries": {
+    "description": "LLM 工具调用最大重试次数",
+    "type": "int",
+    "default": 3,
+    "hint": "LLM 调用 get_weather 工具失败时的最大重试次数。"
+  }
+}
