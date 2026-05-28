@@ -792,7 +792,7 @@ class WeatherPlugin(Star):
 
     # ── 命令 ──
 
-    @filter.command("weather")
+    @filter.command("weather", desc="查询当前会话默认城市的实时天气")
     async def cmd_weather(self, event: AstrMessageEvent):
         tid = self._extract_target(event)
         cfg = self._ensure_target_cfg(tid)
@@ -801,7 +801,7 @@ class WeatherPlugin(Star):
         msg = await self._build_weather(city)
         yield event.plain_result(msg or f"获取「{city}」天气失败。请检查 API 配置。")
 
-    @filter.command("weather_city")
+    @filter.command("weather_city", desc="设置当前会话默认城市")
     async def cmd_weather_city(self, event: AstrMessageEvent):
         city = event.message_str.strip()
         for p in ("/weather_city", "weather_city"):
@@ -814,14 +814,14 @@ class WeatherPlugin(Star):
         self._save_config()
         yield event.plain_result(f"已将本会话默认城市设置为：{city}")
 
-    @filter.command("weather_forecast")
+    @filter.command("weather_forecast", desc="查看当前会话默认城市的3天天气预报")
     async def cmd_weather_forecast(self, event: AstrMessageEvent):
         tid = self._extract_target(event)
         city = self.config["targets"].get(tid, {}).get("city", "北京")
         msg = await self._build_forecast(city)
         yield event.plain_result(msg or f"获取「{city}」预报失败。请检查 API 配置。")
 
-    @filter.command("weather_auto")
+    @filter.command("weather_auto", desc="开启定时天气推送（可指定间隔分钟数）")
     async def cmd_weather_auto(self, event: AstrMessageEvent):
         arg = event.message_str.strip()
         for p in ("/weather_auto", "weather_auto"):
@@ -842,7 +842,7 @@ class WeatherPlugin(Star):
         self._schedule_next(tid)
         yield event.plain_result(f"已开启定时天气推送！\n城市：{cfg.get('city', '北京')}\n间隔：每 {minutes} 分钟\n发送 /weather_stop 可停止。")
 
-    @filter.command("weather_alert")
+    @filter.command("weather_alert", desc="切换特殊天气过滤模式（仅特殊天气推送）")
     async def cmd_weather_alert(self, event: AstrMessageEvent):
         arg = event.message_str.strip()
         for p in ("/weather_alert", "weather_alert"):
@@ -866,7 +866,7 @@ class WeatherPlugin(Star):
         else:
             yield event.plain_result("已开启「严格仅特殊天气推送」（含每日首次也不推送）。\n发送 /weather_alert 可恢复每天首次推送。")
 
-    @filter.command("weather_stop")
+    @filter.command("weather_stop", desc="停止当前会话的定时天气推送")
     async def cmd_weather_stop(self, event: AstrMessageEvent):
         tid = self._extract_target(event)
         if tid in self.config["targets"]:
@@ -877,7 +877,7 @@ class WeatherPlugin(Star):
         else:
             yield event.plain_result("本会话未开启定时推送，无需停止。")
 
-    @filter.command("weather_test")
+    @filter.command("weather_test", desc="立即触发一次天气推送（测试用，须先开启定时推送）")
     async def cmd_weather_test(self, event: AstrMessageEvent):
         tid = self._extract_target(event)
         if tid not in self.config["targets"]:
@@ -885,7 +885,7 @@ class WeatherPlugin(Star):
             return
         await self._check_and_push(tid)
 
-    @filter.command("weather_status")
+    @filter.command("weather_status", desc="查看插件状态、活跃推送列表和下次推送倒计时")
     async def cmd_weather_status(self, event: AstrMessageEvent):
         tid = self._extract_target(event)
         cfg = self.config["targets"].get(tid, {})
