@@ -1,6 +1,6 @@
 name: astrbot_plugin_proactive_weather
 display_name: 定时天气推送
 desc: 定时自动查询天气并推送到指定会话的插件。基于和风天气 API。
-version: v1.0.0
+version: v1.0.1
 author: D1ff1culTT
 repo: https://github.com/D1ff1culTT/astrbot_plugin_proactive_weather
