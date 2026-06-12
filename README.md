@@ -108,7 +108,7 @@ git clone https://github.com/D1ff1culTT/astrbot_plugin_proactive_weather.git
 
 ## 配置
 
-大部分配置项均可通过 AstrBot 控制面板调整，修改后即时生效无需重启：
+大部分配置项均可通过 AstrBot 控制面板实时调整。面板修改通过 `_get_cfg()` 动态读取 `_dashboard_config`，无需重启即可对所有会话生效（未在单个会话中显式覆盖 `alert_only` / `alert_first_of_day` 的会话会立即跟随面板设置）：
 
 ### API 配置
 
@@ -143,8 +143,8 @@ git clone https://github.com/D1ff1culTT/astrbot_plugin_proactive_weather.git
 |------|--------|------|
 | `city` | `"北京"`（IP 自动检测） | 默认查询城市 |
 | `interval` | 60 | 推送间隔（分钟） |
-| `alert_only` | 继承全局 | 该会话是否仅特殊天气推送 |
-| `alert_first_of_day` | 继承全局 | 该会话每天首次是否始终推送 |
+| `alert_only` | 继承全局 | 该会话是否仅特殊天气推送。会话级显式设置（通过指令/Agent Tool）优先；未设置时跟随面板全局开关，面板修改即时生效 |
+| `alert_first_of_day` | 继承全局 | 该会话每天首次是否始终推送。回退逻辑同 `alert_only` |
 | `last_weather_category` | `"normal"` | 上次推送的天气类型（用于去重） |
 
 ---
@@ -159,7 +159,7 @@ git clone https://github.com/D1ff1culTT/astrbot_plugin_proactive_weather.git
 | `/weather_city` | `<城市名>` | 设置当前会话默认城市（如 `/weather_city 上海`） |
 | `/weather_forecast` | — | 查看 3 天天气预报 |
 | `/weather_auto` | `<分钟数>` | 开启定时推送（如 `/weather_auto 60`，最小 5 分钟） |
-| `/weather_alert` | — | 开启仅推送特殊天气 |
+| `/weather_alert` | `[on\|off\|strict]` | 切换特殊天气推送。无参数=toggle（开⇄关），`on`=开启，`off`=关闭，`strict`=严格模式（每天首次也不推送） |
 | `/weather_stop` | — | 停止当前会话的定时推送 |
 | `/weather_test` | — | 立即触发一次推送（测试用，须先 `/weather_auto` 开启） |
 | `/weather_status` | — | 查看插件状态：API 配置、活跃推送列表、下次推送倒计时 |
@@ -293,6 +293,8 @@ API 请求：
 | 推送不触发 | 免打扰时段中 / 间隔未到 / alert_only 过滤 | 查看日志 `[WeatherPlugin]`，使用 `/weather_status` 检查状态 |
 | 无对话上下文 | LivingMemory 未安装或记忆库为空 | 确认 LivingMemory 插件已安装并初始化完毕，多聊几句积累记忆 |
 | 缓存未命中率高 | motivation 或工具定义被动态内容污染 | 检查日志，确认 `system_prompt` 和 `func_tool` 序列化结果稳定 |
+| 面板关闭 alert_only 不生效 | 旧版本 BUG：会话级配置硬拷贝了全局设置 | 升级到最新版，现在面板修改会通过 `_get_cfg()` 动态读取，立即对所有未显式覆盖的会话生效 |
+| 指令无法关闭特殊天气 | 同理，旧版 `_ensure_target_cfg` 存在早退 BUG | 升级后使用 `/weather_alert`（toggle）或 `/weather_alert off` 即可关闭 |
 
 ---
 

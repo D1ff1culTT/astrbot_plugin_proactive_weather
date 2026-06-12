@@ -307,9 +307,9 @@ class WeatherPlugin(Star):
         except asyncio.CancelledError:
             return
 
-        if self.config.get("dnd_enabled") and self._is_in_dnd(self.config["dnd_start"], self.config["dnd_end"]):
+        if self._get_cfg("dnd_enabled") and self._is_in_dnd(self._get_cfg("dnd_start", "22:00"), self._get_cfg("dnd_end", "07:00")):
             if not self._dnd_logged:
-                logger.info(f"[WeatherPlugin] 免打扰时段 ({self.config['dnd_start']}-{self.config['dnd_end']})，推送顺延 10 分钟")
+                logger.info(f"[WeatherPlugin] 免打扰时段 ({self._get_cfg('dnd_start', '22:00')}-{self._get_cfg('dnd_end', '07:00')})，推送顺延 10 分钟")
                 self._dnd_logged = True
             self._tasks[target_id] = asyncio.create_task(self._timer_runner(target_id, 600))
             return
@@ -338,14 +338,16 @@ class WeatherPlugin(Star):
             self._save_config()
 
         # 仅特殊天气模式：基于天气类型变化去重，避免重复推送相同天气
-        if cfg.get("alert_only", False):
+        # 优先使用当前会话的显式设置，否则回退到全局面板设置（支持面板热更新）
+        alert_only = cfg.get("alert_only") if "alert_only" in cfg else self._get_cfg("alert_only", False)
+        if alert_only:
             current = await self._fetch_current(city)
             if current:
                 now_cat = self._classify_weather(current)
                 last_cat = cfg.get("last_weather_category", "normal")
 
                 # 每天首次推送：无视类别比较，始终推送
-                first_of_day = cfg.get("alert_first_of_day", True)
+                first_of_day = cfg.get("alert_first_of_day") if "alert_first_of_day" in cfg else self._get_cfg("alert_first_of_day", True)
                 last_ts = cfg.get("last_report", 0)
                 is_first_today = not last_ts or (
                     datetime.fromtimestamp(last_ts).date() != datetime.now().date()
@@ -727,6 +729,14 @@ class WeatherPlugin(Star):
 
     # ── 配置读写 ──
 
+    def _get_cfg(self, key: str, default=None):
+        """读取有效配置：优先从 dashboard 实时配置读取（支持面板热更新），
+        回退到缓存的 self.config。确保面板修改后立即生效，无需重启。"""
+        val = self._dashboard_config.get(key) if self._dashboard_config else None
+        if val is not None and val != "":
+            return val
+        return self.config.get(key, default)
+
     async def _load_config(self):
         try:
             if os.path.exists(CONFIG_FILE):
@@ -765,14 +775,10 @@ class WeatherPlugin(Star):
 
     def _ensure_target_cfg(self, target_id: str) -> dict:
         if target_id not in self.config["targets"]:
-            if target_id.count(":") < 2:
-                return {}
             self.config["targets"][target_id] = {
                 "city": "北京",
                 "interval": 60,
                 "last_report": time.time(),
-                "alert_only": self.config.get("alert_only", False),
-                "alert_first_of_day": self.config.get("alert_first_of_day", True),
             }
         return self.config["targets"][target_id]
 
@@ -847,24 +853,47 @@ class WeatherPlugin(Star):
         arg = event.message_str.strip()
         for p in ("/weather_alert", "weather_alert"):
             arg = arg.replace(p, "", 1).strip()
-        # /weather_alert off → 关闭；/weather_alert strict → 严格仅特殊天气；其他 → 开启（含每天首次）
-        if arg.lower() in ("off", "false", "0", "关", "停"):
-            enabled, first_of_day = False, True
-        elif arg.lower() in ("strict", "严格"):
-            enabled, first_of_day = True, False
-        else:
-            enabled, first_of_day = True, True
         tid = self._extract_target(event)
         cfg = self._ensure_target_cfg(tid)
+
+        # 读取当前有效状态（会话覆盖 > 全局面板 > 默认）
+        current_alert = cfg.get("alert_only") if "alert_only" in cfg else self._get_cfg("alert_only", False)
+        current_first = cfg.get("alert_first_of_day") if "alert_first_of_day" in cfg else self._get_cfg("alert_first_of_day", True)
+
+        if arg.lower() in ("off", "false", "0", "关", "停"):
+            # 显式关闭
+            enabled, first_of_day = False, True
+        elif arg.lower() in ("strict", "严格"):
+            # 严格模式（含每日首次也不推送）
+            enabled, first_of_day = True, False
+        elif arg.lower() in ("on", "true", "1", "开"):
+            # 显式开启（保留之前的 first_of_day 偏好）
+            enabled, first_of_day = True, current_first
+        elif arg == "":
+            # 无参数 → toggle：当前开着就关，关着就开（保留 first_of_day 偏好）
+            if current_alert:
+                enabled, first_of_day = False, True
+            else:
+                enabled, first_of_day = True, current_first
+        else:
+            yield event.plain_result(
+                "用法：\n"
+                "  /weather_alert        — 切换（开⇄关）\n"
+                "  /weather_alert off    — 关闭特殊天气推送\n"
+                "  /weather_alert on     — 开启（每天首次始终推送）\n"
+                "  /weather_alert strict — 严格模式（每天首次也不推送）"
+            )
+            return
+
         cfg["alert_only"] = enabled
         cfg["alert_first_of_day"] = first_of_day
         self._save_config()
         if not enabled:
-            yield event.plain_result("已切换为「正常定时推送」模式。")
+            yield event.plain_result("已关闭「仅特殊天气推送」，恢复为正常定时推送。")
         elif first_of_day:
-            yield event.plain_result("已开启「仅特殊天气推送」，每天首次始终推送。\n特殊天气：雨、雪、暴风、雷、冰雹、雾霾、沙尘、台风、高温>35°C、低温<0°C。\n发送 /weather_alert strict 可关闭每日首次推送。")
+            yield event.plain_result("已开启「仅特殊天气推送」，每天首次始终推送。\n特殊天气：雨、雪、暴风、雷、冰雹、雾霾、沙尘、台风、高温>35°C、低温<0°C。\n发送 /weather_alert off 可关闭，/weather_alert strict 可关闭每日首次推送。")
         else:
-            yield event.plain_result("已开启「严格仅特殊天气推送」（含每日首次也不推送）。\n发送 /weather_alert 可恢复每天首次推送。")
+            yield event.plain_result("已开启「严格仅特殊天气推送」（每天首次也不推送）。\n发送 /weather_alert off 可关闭，/weather_alert 可恢复每天首次推送。")
 
     @filter.command("weather_stop", desc="停止当前会话的定时天气推送")
     async def cmd_weather_stop(self, event: AstrMessageEvent):
@@ -904,8 +933,8 @@ class WeatherPlugin(Star):
         ]
         if is_active:
             lines.append(f"推送间隔：每 {interval} 分钟")
-            alert_only = cfg.get("alert_only", False)
-            first_of_day = cfg.get("alert_first_of_day", True)
+            alert_only = cfg.get("alert_only") if "alert_only" in cfg else self._get_cfg("alert_only", False)
+            first_of_day = cfg.get("alert_first_of_day") if "alert_first_of_day" in cfg else self._get_cfg("alert_first_of_day", True)
             if alert_only:
                 mode = "仅特殊天气（每天首次始终推送）" if first_of_day else "仅特殊天气（严格模式）"
             else:
